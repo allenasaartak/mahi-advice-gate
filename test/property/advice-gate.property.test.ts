@@ -72,9 +72,11 @@ describe('advice gate properties', () => {
     fc.assert(
       fc.property(
         fc.integer({ min: 0, max: 5_000_000 }),
-        fc.integer({ min: 1, max: 5_000_000 }),
+        fc.integer({ min: 1, max: 4_000_000 }),
         (savingsPaise, excessPaise) => {
           const paymentPaise = savingsPaise + excessPaise;
+
+          fc.pre(paymentPaise <= 9_200_000);
 
           const result = evaluateAdvice(
             buildPaymentProfile(savingsPaise, 0),

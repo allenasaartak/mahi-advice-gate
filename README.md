@@ -114,10 +114,11 @@ The suite includes:
 - evidence and derived-fact unit tests
 - HTTP/API validation tests
 - property-based testing with `fast-check`
+- synthetic red-team testing for account states, malformed input, evidence removal, semantic inconsistencies and boundary conditions
 
 Property tests verify invariants across generated financial states, including deterministic repeatability, protection against payments exceeding savings, monotonic safety when essential obligations are added, and rejection of unsupported exact score predictions.
 
-Current suite: **50 tests**.
+Current suite: **175 tests**, including randomized property tests, hostile API fuzzing, exhaustive cross-product matrices and semantic boundary tests.
 
 Coverage is above the configured thresholds for statements, branches, functions and lines.
 

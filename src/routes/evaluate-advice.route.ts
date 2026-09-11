@@ -1,6 +1,7 @@
 import type { FastifyPluginCallback } from 'fastify';
 
 import { evaluateAdvice } from '../domain/decision/evaluate-advice.js';
+import { validateFinancialProfileIntegrity } from '../domain/input/request-integrity.js';
 import {
   EvaluateAdviceRequestSchema,
   type EvaluateAdviceRequest,
@@ -16,6 +17,22 @@ export const evaluateAdviceRoute: FastifyPluginCallback = (app, _options, done) 
         response: {
           200: EvaluationResponseSchema,
         },
+      },
+
+      preHandler: (request, reply, next) => {
+        const errors = validateFinancialProfileIntegrity(request.body.profile);
+
+        if (errors.length > 0) {
+          reply.code(400).send({
+            statusCode: 400,
+            error: 'Bad Request',
+            message: errors.join('; '),
+          });
+
+          return;
+        }
+
+        next();
       },
     },
     (request) => {

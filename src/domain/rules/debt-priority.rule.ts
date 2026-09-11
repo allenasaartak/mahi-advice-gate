@@ -1,10 +1,9 @@
-import { getEvidenceFact } from '../evidence/resolver.js';
 import type { PolicyRule } from './types.js';
 
 export const debtPriorityRule: PolicyRule = {
   id: 'DEBT_PRIORITY_EVIDENCE',
 
-  evaluate({ proposal, evidence }) {
+  evaluate({ profile, proposal }) {
     if (proposal.type !== 'DEBT_PRIORITY') {
       return {
         ruleId: 'DEBT_PRIORITY_EVIDENCE',
@@ -12,46 +11,74 @@ export const debtPriorityRule: PolicyRule = {
       };
     }
 
-    if (!proposal.targetAccountId || !proposal.secondaryAccountId) {
+    if (proposal.targetAccountId === undefined || proposal.secondaryAccountId === undefined) {
       return {
         ruleId: 'DEBT_PRIORITY_EVIDENCE',
         status: 'UNKNOWN',
-        reasonCode: 'DEBT_COMPARISON_INCOMPLETE',
-        reason: 'Both debt accounts are required to evaluate repayment priority.',
-        missingInformation: ['Primary debt account', 'Comparison debt account'],
+        reasonCode: 'DEBT_PRIORITY_ACCOUNTS_MISSING',
+        reason: 'Both debts must be identified before a repayment priority can be evaluated.',
+        missingInformation: ['Target debt', 'Comparison debt'],
       };
     }
 
-    const targetApr = getEvidenceFact<number>(evidence, 'targetAccount.annualPercentageRateBps');
+    if (proposal.targetAccountId === proposal.secondaryAccountId) {
+      return {
+        ruleId: 'DEBT_PRIORITY_EVIDENCE',
+        status: 'FAIL',
+        reasonCode: 'DEBT_PRIORITY_SAME_ACCOUNT',
+        reason: 'A debt cannot be prioritised against itself.',
+      };
+    }
 
-    const secondaryApr = getEvidenceFact<number>(
-      evidence,
-      'secondaryAccount.annualPercentageRateBps',
+    const targetAccount = profile.bureau.accounts.find(
+      (account) => account.id === proposal.targetAccountId,
     );
 
-    if (
-      targetApr?.state !== 'KNOWN' ||
-      secondaryApr?.state !== 'KNOWN' ||
-      targetApr.value === undefined ||
-      secondaryApr.value === undefined
-    ) {
+    const secondaryAccount = profile.bureau.accounts.find(
+      (account) => account.id === proposal.secondaryAccountId,
+    );
+
+    if (!targetAccount || !secondaryAccount) {
+      return {
+        ruleId: 'DEBT_PRIORITY_EVIDENCE',
+        status: 'PASS',
+      };
+    }
+
+    if (targetAccount.status !== 'CURRENT' || secondaryAccount.status !== 'CURRENT') {
+      return {
+        ruleId: 'DEBT_PRIORITY_EVIDENCE',
+        status: 'UNKNOWN',
+        reasonCode: 'DEBT_PRIORITY_STATUS_REQUIRES_CONTEXT',
+        reason: 'APR alone is not sufficient to prioritise debts when either account is overdue.',
+        missingInformation: [
+          'Arrears, minimum dues, penalties or payment urgency for overdue debts',
+        ],
+      };
+    }
+
+    const targetApr = targetAccount.annualPercentageRateBps;
+
+    const secondaryApr = secondaryAccount.annualPercentageRateBps;
+
+    if (targetApr === undefined || secondaryApr === undefined) {
       return {
         ruleId: 'DEBT_PRIORITY_EVIDENCE',
         status: 'UNKNOWN',
         reasonCode: 'DEBT_PRIORITY_EVIDENCE_MISSING',
         reason:
-          'The available evidence is insufficient to determine which debt should be prioritised.',
-        missingInformation: ['Primary debt interest rate', 'Comparison debt interest rate'],
+          'Comparative interest-rate evidence is required before recommending one current debt over another.',
+        missingInformation: ['Target account APR', 'Comparison account APR'],
       };
     }
 
-    if (targetApr.value <= secondaryApr.value) {
+    if (targetApr <= secondaryApr) {
       return {
         ruleId: 'DEBT_PRIORITY_EVIDENCE',
         status: 'FAIL',
         reasonCode: 'DEBT_PRIORITY_NOT_SUPPORTED',
         reason:
-          'The available interest-rate evidence does not support prioritising the proposed account.',
+          'The available APR evidence does not support prioritising the target debt over the comparison debt.',
       };
     }
 

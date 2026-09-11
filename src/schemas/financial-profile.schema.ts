@@ -1,6 +1,9 @@
 import { Type, type Static } from '@sinclair/typebox';
 
-const MoneySchema = Type.Integer({ minimum: 0 });
+const MoneySchema = Type.Integer({
+  minimum: 0,
+  maximum: Number.MAX_SAFE_INTEGER,
+});
 
 const DateSchema = Type.String({
   pattern: '^\\d{4}-\\d{2}-\\d{2}$',

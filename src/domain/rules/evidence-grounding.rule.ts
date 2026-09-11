@@ -5,7 +5,7 @@ import type { PolicyRule } from './types.js';
 export const evidenceGroundingRule: PolicyRule = {
   id: 'EVIDENCE_GROUNDING',
 
-  evaluate({ proposal, evidence }) {
+  evaluate({ profile, proposal, evidence }) {
     if (proposal.type === 'FACTUAL_CLAIM') {
       if (!proposal.factualClaimKind) {
         return {
@@ -15,6 +15,25 @@ export const evidenceGroundingRule: PolicyRule = {
           reason:
             'A factual claim must declare the specific fact being asserted so it can be checked deterministically.',
         };
+      }
+
+      if (
+        proposal.factualClaimKind === 'CARD_UTILIZATION' ||
+        proposal.factualClaimKind === 'BALANCE_REDUCTION_LOWERS_UTILIZATION'
+      ) {
+        const targetAccount =
+          proposal.targetAccountId === undefined
+            ? undefined
+            : profile.bureau.accounts.find((account) => account.id === proposal.targetAccountId);
+
+        if (targetAccount !== undefined && targetAccount.type !== 'CREDIT_CARD') {
+          return {
+            ruleId: 'EVIDENCE_GROUNDING',
+            status: 'FAIL',
+            reasonCode: 'UTILIZATION_REQUIRES_CREDIT_CARD',
+            reason: 'Card utilisation claims can only be evaluated for credit-card accounts.',
+          };
+        }
       }
 
       if (proposal.factualClaimKind === 'CARD_UTILIZATION') {

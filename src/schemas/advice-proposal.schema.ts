@@ -1,6 +1,9 @@
 import { Type, type Static } from '@sinclair/typebox';
 
-const MoneySchema = Type.Integer({ minimum: 0 });
+const MoneySchema = Type.Integer({
+  minimum: 1,
+  maximum: Number.MAX_SAFE_INTEGER,
+});
 
 export const AdviceTypeSchema = Type.Union([
   Type.Literal('FACTUAL_CLAIM'),
